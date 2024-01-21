@@ -1,83 +1,92 @@
-# Import sys to handle system functions such as sys.exit()
-import sys
-# Imports class to check active windows and bring Luna.exe to the front and maximised
+# Imports the pygetwindow class to check and manipulate the os's active windows
 import pygetwindow as apps
-# Import the class to handle drawing graphics and text on screen
+# Imports QtWidgets classes which I believe to be necessary for the QtGui library to draw graphics (but not 100% sure on this one)
+from PyQt5.QtWidgets import QApplication, QWidget
+# Imports QtGui classes that handle drawing overlays and text to the screen
 from PyQt5.QtGui import QFont, QFontMetricsF, QPainter, QBrush, QColor, QIcon
-# Import classes to setup a timer to close overlays or 
-from PyQt5.QtCore import QCoreApplication, QRect, QRectF, Qt, QTimer, pyqtSignal
-# Importing classes for building the structure of the GUI (overlay)
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
+# Imports QtCore classes that handle the creation of shapes and timers
+from PyQt5.QtCore import QRect, QRectF, Qt, QTimer
 
 
-
-# Define a class named GameOverlay, inheriting from the QWidget class
 class OverlayManager(QWidget):
     
     """
-    Handles any overlays and debug messages over the Luna.exe 
-    application to visually show any object targets and to inform 
-    the user of the current process being performed by the bot.
+    Class that handles any overlays and debug messages over the Luna.exe application to visually show objects that the bot can see 
+    and to inform the user of the current action that the bot is performing
     """
-    
-    # Stores the current instance of this class to prevent multiple instances being executed simultaneously
+
+    # Stores any existing instances of this class to prevent multiple instances being executed simultaneously
     instance = None
 
-    # Handles the creation of a new instance of this class, ensuring only one instance exists at a time
+    
     def __new__(self):
+        """
+        Method that manages the different instances of this class being created, ensuring only one instance exists at any given time
+        """
+        
         # Checks if the class instance variable has an instance stored in it
         if not self.instance:
             # Creates a new instance of this class and stores it in the instance attribute
             self.instance = super().__new__(self)
         
-        # Returns this class as an instantiated object    
+        # Returns either the newly created instance of this class or if one previously existed, returns that instance instead
         return self.instance
 
+
     def __init__(self):
-        print('init')
-        # Calls the default initialization method
-        super().__init__()
-        self.overlayCleared = False
-        self.debugCleared = False
+        """
+        Method that creates/initializes any instance variables that this class may require
+        """
         
+        # Calls the default initialization method to ensure the default initialization behaviour is executed
+        super().__init__()
+        
+        # Both of these booleans returns true when there is no screen overlay or debug message currently
+        # on the screen. This is what prevents one another from prematurely closing eachother.
+        self.overlayCleared = False
+        self.debugCleared = False   
+        
+        # Creates a list to store each overlay that should be drawn to the screen when the paint event is called
+        self.overlayList = []
     
 
     def paintEvent(self, event):
         """
-        Overrides the paintEvent handler to draw overlay on top of all other windows
+        Overrides the paintEvent handler to draw the overlays/debug messages to the screen
         """
-        print("Paint event triggered")
         
-        # Initialize painter object to paint overlay with
-        overlay = QPainter(self)
-        overlay.setRenderHint(QPainter.Antialiasing)
+        # Calls the parent classes paintEvent to ensure the default painting behaviour is executed
+        super().paintEvent(event)
         
-        # Calculate the width and height of each rectangle
-        rectWidth = int(self.overlayBox.width() / self.overlayColumns)
-        rectHeight = int(self.overlayBox.height() / self.overlayRows)
-
-        # Draws a grid of tiles representing the inventory if rows/columns have been passed to the addOverlay method, else draws a single rectangle
-        for currentRow in range(self.overlayRows):
-            for currentColumn in range(self.overlayColumns):
-                # Calculates the position for the current rectangle
-                rect_x = currentRow * int(self.overlayBox.width() / self.overlayColumns)
-                rect_y = currentColumn * int(self.overlayBox.height() / self.overlayRows)
-        
-                # Creates a QRect for the current rectangle
-                rect = QRect(rect_x, rect_y, rectWidth, rectHeight)
-
-                # Draws a rectangle filled by a transparent brush so we can only see the outline
-                overlay.setPen(QColor(self.overlayColor))
-                overlay.setBrush(QBrush(QColor(0, 0, 0, 0)))
-                overlay.drawRect(rect)
-                
-        # Initialize painter object to paint text with
+        # Creates an painter object to paint the screen with overlays or text
         painter = QPainter(self)
+        # Enables antialiasing to smooth out any jagged or pixelated lines or edges
+        painter.setRenderHint(QPainter.Antialiasing)
+        # Sets the outline color of the rectangles to match the default color unless another color has been passed
+        painter.setPen(QColor(self.overlayColor))
+        # Sets the fill color to transparent so we can only see the outline of each overlay
+        painter.setBrush(QBrush(QColor(0, 0, 0, 0)))
+        
+        # Draws the debug message to the screen (if one exists)
+        self.__drawDebugMsg(painter)
+        # Draws each overlay in the overlayList
+        self.__drawOverlays(painter)
+          
 
-        # Defines the texts design properties
+    def __drawDebugMsg(self, painter):
+        """
+        Method to draw a debug message to the screen.
+        This method has been __nameMangled to reduce accidental usage outside of this class
+        """
+        
+        # Returns early if there is no debug message to paint
+        if (self.text is None):
+            return
+        
+        # Sets the debug messages text properties (font style and font size)
         font = QFont("Arial", 9)
+        # Applies debug messages text properties to the painter
         painter.setFont(font)
-        painter.setPen(Qt.white)
         
         # Defines the texts location and size
         textWidth = QFontMetricsF(font).width(self.text)
@@ -90,7 +99,63 @@ class OverlayManager(QWidget):
         painter.drawText(textBox, Qt.AlignTop | Qt.AlignLeft, self.text)
 
 
+    def __drawOverlays(self, painter):
+        """
+        Method to draw each overlay currently stored in the overlayList to the screen.
+        This method has been __nameMangled to reduce accidental usage outside of this class
+        """
+        
+        # Ensures the overlayList is populated before trying to iterate through it
+        if self.overlayList:
+            # For each rectangle (overlay) in the overlay list
+            for thisRect in self.overlayList:
+                # Draws this rectangle to the screen
+                painter.drawRect(thisRect)
 
+
+    def showLuna(self):
+        """
+        Method to active the Luna.exe app, bringing it to the foreground and maximizing it
+        """
+        
+        # Fetches all instances of Luna.exe currently running and stores them in a list
+        lunaList = apps.getWindowsWithTitle("Luna")
+        
+        # If lunaList is not empty
+        if lunaList:
+            # Fetches the first instance of Luna.exe that was found and creates a class attribute for it
+            self.luna = lunaList[0]
+            # Activates and maximizes this instance of Luna.exe
+            self.luna.activate()
+            self.luna.maximize()
+        
+            # Creates a transparent canvas overlay over the luna application, matching its dimensions
+            # This allows us to draw on top of the app whilst still being able to see and use the app as per normal
+            self.setGeometry(self.luna.left, self.luna.top, self.luna.width, self.luna.height)
+            # Paints the transparent canvas that was just created
+            self.show()
+            
+        # Else if no instances of Luna.exe are found
+        else:
+            # Raises an exception informing the user that they need to open an instance of Luna.exe first
+            raise RuntimeError("Failed to find Luna.exe! Please ensure there is a \"Luna\" client running before you launch a bot script.")
+    
+    
+    def checkLuna(self):
+        """
+        Method that checks if Luna.exe is the current active application, if not, calls another method to handle its activation.
+        """
+        
+        # Checks if the active window contains the string "Luna"
+        if "Luna" in apps.getActiveWindow:
+            # If the active window contains "Luna", returns early
+            return
+        # Else, luna must not be the active window
+        else:
+            # Calls the method that activates the Luna.exe app
+            self.showLuna()
+                
+        
     def addOverlay(self, overlayX, overlayY, overlayWidth, overlayHeight, overlayRows = 1, overlayColumns = 1, overlayThickness = 2, overlayColor = Qt.white, duration = 3000):
         """
         Adds a new overlay on top of the Luna.exe application at the specified location and size for a specified amount of time
@@ -107,7 +172,9 @@ class OverlayManager(QWidget):
         - timeout (optional int): The time in milliseconds before the overlay automatically closes (default = 3000)
         """
         
-        print('add overlay')
+        # Calls the method that ensures Luna.exe is the active application before proceeding
+        self.checkLuna()
+        
         # Initializes class attributes for class-wide accessibility
         self.overlayRows = overlayRows
         self.overlayColumns = overlayColumns
@@ -121,35 +188,34 @@ class OverlayManager(QWidget):
         # Set attribute for a translucent background
         self.setAttribute(Qt.WA_TranslucentBackground)
         
-        # Check if Luna.exe is running and assigns the first instance of it as a class attribute
-        luna = apps.getWindowsWithTitle("Luna")
         
-        # Checks if an instance of Luna exists and fetches the first
-        # first instance of it if more than one client is currently running
-        if luna and len(luna) > 0:
-            self.luna = luna[0]
-            # Activates and maximizes
-            self.luna.activate()
-            self.luna.maximize()
         
-            # Creates a transparent canvas overlay to match the size of the primary screen
-            self.setGeometry(self.luna.left, self.luna.top, self.luna.width, self.luna.height)
-            self.show()
-            
-        # Else if no instances of Luna.exe are found
-        else:
-            # Raise an exception if no instance of Luna.exe is found
-            raise RuntimeError("Failed to find Luna.exe! Please ensure there is a \"Luna\" client running before you launch a bot script.")
         
-        # Instructs timer to timeout after a specified amount of milliseconds (default = 3000ms)
-        QTimer.singleShot(duration, self.clearOverlay)
+        # Calculate the width and height of each rectangle
+        rectWidth = int(self.overlayBox.width() / self.overlayColumns)
+        rectHeight = int(self.overlayBox.height() / self.overlayRows)
         
-        # Returns this overlay object to allow for later manipulation (not that any manipulation is necessary)
-        #return self
+         # Draws a grid of tiles representing the inventory if rows/columns have been passed to the addOverlay method, else draws a single rectangle
+        for currentRow in range(self.overlayRows):
+            for currentColumn in range(self.overlayColumns):
+                # Calculates the position for the current rectangle
+                rect_x = currentRow * int(self.overlayBox.width() / self.overlayColumns)
+                rect_y = currentColumn * int(self.overlayBox.height() / self.overlayRows)
+        
+                # Creates a QRect for the current rectangle
+                rect = QRect(rect_x, rect_y, rectWidth, rectHeight)
+        
+        # Adds the created overlay to the overlay list so it can be painted later
+        self.overlayList.add(rect)
+                
+        # Starts a single shot timer that will clear this rectangle after the passed duration
+        # Note: The "lambda:" expression is preventing the clearOverlay parameters from being 
+        # prematurely evaluated, I don't think it would matter in this situation but it's good practice.
+        QTimer.singleShot(duration, lambda: self.clearOverlay(rect, duration))
 
 
 
-    def clearOverlay(self):
+    def clearOverlay(self, rect, duration):
         
         print(f'clear overlay {self.debugCleared}')
         if not self.overlayCleared:
@@ -215,7 +281,7 @@ class OverlayManager(QWidget):
         # Triggers the closeEvent for the base class
         super().closeEvent(event)
         # Uses the system exit method to stop this script
-        QCoreApplication.quit()
+        QApplication.quit()
 
 def test():
     """
@@ -225,9 +291,9 @@ def test():
     
     try:
         print('test()')
-        # Creates a PyQt application allowing for any extra arguments to be passed via the command line in future
-        Overlay = QApplication(sys.argv)
-        # Sets an empty QIcon to hide the overlay program from the taskbar
+        # Instantiates a QApplication for PyQt compatibility
+        Overlay = QApplication([])
+        # Sets an empty QIcon to hide the overlay program from the taskbar when the transparent overlay window is opened
         Overlay.setWindowIcon(QIcon())
         
         # Initializes a LunaBot script manager which provides the necessary functions to create a bot script
@@ -236,7 +302,7 @@ def test():
         LunaBot.debug(text = 'Initializing script... Please Wait...', duration = 5000)
         # Adds an overlay to this script to show the user what the bot is looking at or has found
         LunaBot.addOverlay(overlayX = 0, overlayY = 0, overlayWidth = 50, overlayHeight = 50, overlayRows = 2, overlayColumns = 2, duration = 1000)
-        print('Overlay.exec_()')
+        
         # Executes the above instructions
         Overlay.exec_()
 
@@ -251,4 +317,4 @@ if __name__ == '__main__':
     # Calls the test function of this class
     test()
     print('finished test(), exiting now...')
-    sys.exit(0)
+    QApplication.exit()
