@@ -53,7 +53,7 @@ if max_val >= threshold:
     pyautogui.moveTo(center_x, center_y)
     time.sleep(1)
 
-    # Left click
+    # Left click 
     pyautogui.click()
     time.sleep(1)
 
