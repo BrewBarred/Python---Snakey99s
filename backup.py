@@ -54,7 +54,7 @@ if max_val >= threshold:
     time.sleep(1)
 
     # Left click 
-    pyautogui.click()
+    pyautogui.click() 
     time.sleep(1)
 
     # Get pixel color using Pillow at the current mouse location
