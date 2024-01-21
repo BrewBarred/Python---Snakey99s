@@ -41,10 +41,14 @@ class OverlayManager(QWidget):
         # Calls the default initialization method to ensure the default initialization behaviour is executed
         super().__init__()
         
-        # Both of these booleans returns true when there is no screen overlay or debug message currently
-        # on the screen. This is what prevents one another from prematurely closing eachother.
-        self.overlayCleared = False
-        self.debugCleared = False   
+        # Set window flags for the overlay to hide it from the taskbar
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        # Set attribute for a translucent background
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        # Initializes two boolean variables to independently control the closure of overlays and debug messages,
+        # ensuring that closing one does not prematurely affect the closure of the other.
+        self.overlayCleared = self.debugCleared = False
         
         # Creates a list to store each overlay that should be drawn to the screen when the paint event is called
         self.overlayList = []
@@ -55,22 +59,29 @@ class OverlayManager(QWidget):
         Overrides the paintEvent handler to draw the overlays/debug messages to the screen
         """
         
-        # Calls the parent classes paintEvent to ensure the default painting behaviour is executed
-        super().paintEvent(event)
+        try:
+            # Calls the parent classes paintEvent to ensure the default painting behaviour is executed
+            super().paintEvent(event)
         
-        # Creates an painter object to paint the screen with overlays or text
-        painter = QPainter(self)
-        # Enables antialiasing to smooth out any jagged or pixelated lines or edges
-        painter.setRenderHint(QPainter.Antialiasing)
-        # Sets the outline color of the rectangles to match the default color unless another color has been passed
-        painter.setPen(QColor(self.overlayColor))
-        # Sets the fill color to transparent so we can only see the outline of each overlay
-        painter.setBrush(QBrush(QColor(0, 0, 0, 0)))
+            # Creates an painter object to paint the screen with overlays or text
+            painter = QPainter(self)
+            # Enables antialiasing to smooth out any jagged or pixelated lines or edges
+            painter.setRenderHint(QPainter.Antialiasing)
+            # Sets the outline color of the overlay grid to match the default color unless another color has been passed
+            painter.setPen(QColor(self.overlayColor))
+            # Sets the fill color to transparent so we can only see the outline of each overlay
+            painter.setBrush(QBrush(QColor(0, 0, 0, 0)))
         
-        # Draws the debug message to the screen (if one exists)
-        self.__drawDebugMsg(painter)
-        # Draws each overlay in the overlayList
-        self.__drawOverlays(painter)
+            # Draws the debug message to the screen (if one exists)
+            self.__drawDebugMsg(painter)
+            # Draws each overlay in the overlayList
+            self.__drawOverlays(painter)
+        
+        # catches any errors gracefully
+        except Exception as e:
+            
+            # prints an informative error message to the console
+            print(f'Error painting overlays: {e}')
           
 
     def __drawDebugMsg(self, painter):
@@ -79,24 +90,31 @@ class OverlayManager(QWidget):
         This method has been __nameMangled to reduce accidental usage outside of this class
         """
         
-        # Returns early if there is no debug message to paint
-        if (self.text is None):
-            return
+        try:
+            # Returns early if there is no debug message to paint
+            if (self.text is None):
+                return
         
-        # Sets the debug messages text properties (font style and font size)
-        font = QFont("Arial", 9)
-        # Applies debug messages text properties to the painter
-        painter.setFont(font)
+            # Sets the text properties of the debug message (font style and font size)
+            font = QFont("Arial", 9)
+            # Applies debug messages text properties to the painter
+            painter.setFont(font)
         
-        # Defines the texts location and size
-        textWidth = QFontMetricsF(font).width(self.text)
-        textHeight = QFontMetricsF(font).height()
-        textX = (self.luna.width - textWidth) // 2
-        textY = textHeight - textHeight / 1.5
+            # Defines the texts location and size
+            textWidth = QFontMetricsF(font).width(self.text)
+            textHeight = QFontMetricsF(font).height()
+            textX = (self.luna.width - textWidth) // 2
+            textY = textHeight - textHeight / 1.5
         
-        # Defines the textBox in which the text will be displayed and draws it, along with the text message
-        textBox = QRectF(textX, textY, textWidth + 10, textHeight + 10)
-        painter.drawText(textBox, Qt.AlignTop | Qt.AlignLeft, self.text)
+            # Defines the textBox in which the debug message will be displayed
+            textBox = QRectF(textX, textY, textWidth + 10, textHeight + 10)
+            # Draws the textBox to the screen along with the passed debug message
+            painter.drawText(textBox, Qt.AlignTop | Qt.AlignLeft, self.text)
+                # catches any errors gracefully
+        except Exception as e:
+            
+            # prints an informative error message to the console
+            print(f'Error drawing debug message: {e}')
 
 
     def __drawOverlays(self, painter):
@@ -105,40 +123,53 @@ class OverlayManager(QWidget):
         This method has been __nameMangled to reduce accidental usage outside of this class
         """
         
-        # Ensures the overlayList is populated before trying to iterate through it
-        if self.overlayList:
-            # For each rectangle (overlay) in the overlay list
-            for thisRect in self.overlayList:
-                # Draws this rectangle to the screen
-                painter.drawRect(thisRect)
+        try:
+            # Ensures the overlayList is populated before trying to iterate through it
+            if self.overlayList:
+                # For each grid (overlay) in the overlay list
+                for thisGrid in self.overlayList:
+                    # Draws this grid to the screen
+                    painter.drawRect(thisGrid)
+        
+        # catches any errors gracefully
+        except Exception as e:
+            
+            # prints an informative error message to the console
+            print(f'Error drawing overlay: {e}')
 
 
     def showLuna(self):
         """
         Method to active the Luna.exe app, bringing it to the foreground and maximizing it
         """
+        try:
+            # Fetches all instances of Luna.exe currently running and stores them in a list
+            lunaList = apps.getWindowsWithTitle("Luna")
         
-        # Fetches all instances of Luna.exe currently running and stores them in a list
-        lunaList = apps.getWindowsWithTitle("Luna")
+            # If lunaList is not empty
+            if lunaList:
+                # Fetches the first instance of Luna.exe that was found and creates a class attribute for it
+                self.luna = lunaList[0]
+                # Activates and maximizes this instance of Luna.exe
+                self.luna.activate()
+                self.luna.maximize()
         
-        # If lunaList is not empty
-        if lunaList:
-            # Fetches the first instance of Luna.exe that was found and creates a class attribute for it
-            self.luna = lunaList[0]
-            # Activates and maximizes this instance of Luna.exe
-            self.luna.activate()
-            self.luna.maximize()
-        
-            # Creates a transparent canvas overlay over the luna application, matching its dimensions
-            # This allows us to draw on top of the app whilst still being able to see and use the app as per normal
-            self.setGeometry(self.luna.left, self.luna.top, self.luna.width, self.luna.height)
-            # Paints the transparent canvas that was just created
-            self.show()
+                # Creates a transparent canvas overlay over the luna application, matching its dimensions
+                # This allows us to draw on top of the app whilst still being able to see and use the app as per normal
+                self.setGeometry(self.luna.left, self.luna.top, self.luna.width, self.luna.height)
+                # Paints the transparent canvas that was just created
+                self.show()
             
-        # Else if no instances of Luna.exe are found
-        else:
-            # Raises an exception informing the user that they need to open an instance of Luna.exe first
-            raise RuntimeError("Failed to find Luna.exe! Please ensure there is a \"Luna\" client running before you launch a bot script.")
+            # Else if no instances of Luna.exe are found
+            else:
+                # Raises an exception informing the user that they need to open an instance of Luna.exe first
+                raise RuntimeError("Failed to find Luna.exe! Please ensure there is a \"Luna\" client running before you launch a bot script.")
+        
+        # catches any errors gracefully
+        except Exception as e:
+            
+            # prints an informative error message to the console
+            print(f'Error displaying luna app: {e}')
     
     
     def checkLuna(self):
@@ -172,52 +203,55 @@ class OverlayManager(QWidget):
         - timeout (optional int): The time in milliseconds before the overlay automatically closes (default = 3000)
         """
         
-        # Calls the method that ensures Luna.exe is the active application before proceeding
-        self.checkLuna()
+        try:
+            # Calls the checkLuna method which ensures Luna.exe is the active application before proceeding
+            self.checkLuna()
         
-        # Initializes class attributes for class-wide accessibility
-        self.overlayRows = overlayRows
-        self.overlayColumns = overlayColumns
-        self.overlayColor = overlayColor
+            # Initializes class attributes for class-wide accessibility
+            self.overlayColor = overlayColor
 
-        # Creates a rectangle to define the overlay dimensions using the passed parameters for easier reference throughout the class
-        self.overlayBox = QRect(overlayX, overlayY, overlayWidth, overlayHeight)
+            # Creates a rectangle which represents the outer boundries of this grid using the passed parameters
+            self.overlayBox = QRect(overlayX, overlayY, overlayWidth, overlayHeight)
         
-        # Set window flags for the overlay to hide it from the taskbar
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
-        # Set attribute for a translucent background
-        self.setAttribute(Qt.WA_TranslucentBackground)
+            # Stores the grid being drawn inside the for loop 
+            # Calculates the width and height of the grid to draw, based on the passed rows and columns
+            gridWidth = int(self.overlayBox.width() / self.overlayColumns)
+            gridHeight = int(self.overlayBox.height() / self.overlayRows)
         
-        
-        
-        
-        # Calculate the width and height of each rectangle
-        rectWidth = int(self.overlayBox.width() / self.overlayColumns)
-        rectHeight = int(self.overlayBox.height() / self.overlayRows)
-        
-         # Draws a grid of tiles representing the inventory if rows/columns have been passed to the addOverlay method, else draws a single rectangle
-        for currentRow in range(self.overlayRows):
-            for currentColumn in range(self.overlayColumns):
-                # Calculates the position for the current rectangle
-                rect_x = currentRow * int(self.overlayBox.width() / self.overlayColumns)
-                rect_y = currentColumn * int(self.overlayBox.height() / self.overlayRows)
-        
-                # Creates a QRect for the current rectangle
-                rect = QRect(rect_x, rect_y, rectWidth, rectHeight)
-        
-        # Adds the created overlay to the overlay list so it can be painted later
-        self.overlayList.add(rect)
+            # Draws a grid using the passed rows and columns, if no rows or columns were passed, this will create a 1x1 grid by default
+            for currentRow in range(self.overlayRows):
+                for currentColumn in range(self.overlayColumns):
                 
-        # Starts a single shot timer that will clear this rectangle after the passed duration
-        # Note: The "lambda:" expression is preventing the clearOverlay parameters from being 
-        # prematurely evaluated, I don't think it would matter in this situation but it's good practice.
-        QTimer.singleShot(duration, lambda: self.clearOverlay(rect, duration))
+                    # Calculates this position of the grid slot being drawn (or outline if its a 1x1 grid)
+                    gridX = currentRow * int(self.overlayBox.width() / self.overlayColumns)
+                    gridY = currentColumn * int(self.overlayBox.height() / self.overlayRows)
+                
+                    # Creates a rectangle representing this grid/grid slot
+                    grid = (QRect(gridX, gridY, gridWidth, gridHeight))
+                
+                    # Adds the created grid/grid slot to the overlay list
+                    self.overlayList.append(grid)
+                
+                    # If the user has not passed 'None' for the duration...
+                    if duration:
+                        # Starts a single shot timer that will clear this grid after the passed duration in ms has passed.
+                        # Note: The "lambda:" expression is preventing the clearOverlay parameters from being prematurely 
+                        # evaluated, I don't think it would matter in this situation but it's good practice.
+                        QTimer.singleShot(duration, lambda: self.clearOverlay(grid, duration))
+                        
+        # catches any errors gracefully
+        except Exception as e:
+            
+            # prints an informative error message to the console
+            print(f'Error adding overlay: {e}')
 
 
-
-    def clearOverlay(self, rect, duration):
+    def clearOverlay(self, grid, duration):
+        """
+        Method to remove the overlays from the screen after their timers have expired
+        """
         
-        print(f'clear overlay {self.debugCleared}')
+        self.debug(f'clear overlay {self.debugCleared}')
         if not self.overlayCleared:
             print('clearing...')
             # Calls the closeEvent method
