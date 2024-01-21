@@ -1,3 +1,5 @@
+# Imports os library to 
+import os
 import pyautogui
 import cv2
 import numpy as np
@@ -20,8 +22,11 @@ time.sleep(1)
 # Type "Hi, Eli!"
 pyautogui.typewrite("Hi, Eli!")
 
+# Construct the relative path to the "screens" folder
+imagePath = os.path.normpath(os.path.join(os.getcwd(), '..', 'screens'))
+
 # Load the image
-template_path = r"C:\Users\Eli\Desktop\Gaming Shit\Luna\LunaBot\project\images\test3.png"
+template_path = os.path.join(imagePath, 'test3.png')
 template = cv2.imread(template_path)
 
 # Get the screen image

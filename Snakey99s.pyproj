@@ -23,9 +23,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="draw2.py" />
     <Compile Include="col.py" />
-    <Compile Include="draw.py" />
     <Compile Include="Main.py" />
     <Compile Include="objectRotated.py" />
     <Compile Include="OverlayManager.py" />

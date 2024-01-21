@@ -1,25 +1,22 @@
 # Imports overlay manager to manage drawing rectangles 
 # and debug messages on top of the Luna.exe application
-from OverlayManager import OverlayManager
+import OverlayManager
 #from ImageChecker import image_checker
 
 class ScriptManager:
     
-    debug = OverlayManager.debug
-    
     def __init__(self):
-    # Optionally, you can perform any one-time setup here
+        # Initializes components required to write scripts
+        self.debug = OverlayManager.debug
         self.debug('Initializing script manager... Please wait...')
 
     def debug(self):
         # Use the imported modules here
         self.debug("Debug message")
-        image_checker.check_image()
-        # Use other functionality as needed
 
-    def log_message(self, message):
+    def log(self, message, exception = None):
         # Example method for logging messages
-        print(f"Log: {message}")
+        print(f"Error: {message} \n Exception: {exception}'")
 
 # mining_bot.py
 class MiningBot:
