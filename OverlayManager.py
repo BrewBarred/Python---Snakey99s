@@ -19,53 +19,64 @@ class OverlayManager(QWidget):
     Class that handles any overlays and debug messages over the game client to visually show objects that the bot can see 
     and to inform the user of the current action that the bot is performing
     """
-
+    
     # Stores any existing instances of this class to prevent multiple instances being executed simultaneously, a.k.a simple singleton implementation
     instance = None
+    # Stores the first instance of luna found in the active windows
+    luna = None
+    # True if this instance should print debug messages to the console
+    debugMode = False
+    # Creates a debug list which queues any debug messages needing to be displayed
+    debugMsgList = []
     # Returns true if there is no self debugMsg currently being displayed
     debugCleared = False
     # Returns true if there are no overlays being displayed
     overlaysCleared = False
-    # Creates a debug which queues any debug messages needing to be displayed
-    debugMsgList = []
+    # Creates an overlay list which queues any debug messages needing to be displayed
+    overlayList = []
     
     
-    
-    def __new__(cls):
+    def __call__(self, *args, **kwargs):
         """
-        Method that manages the different instances of this class being created, ensuring only one instance exists at any given time
+        Method that overrides the default calling method (which is executed whenever this class is called) to ensure that
+        only 1 instance of this class can exist at all times. This is achieved by using a simple singleton implementation
         """
+        
+        # Writes debug info to console
+        print(f'New instance has been called! Current instance: {self.instance}')
         
         # Checks if the class instance variable has an instance stored in it
-        if not cls.instance:
+        if self.instance is None:
             # Creates a new instance of this class and stores it in the instance attribute
-            cls.instance = super().__new__(cls)
+            self.instance = super().__call__(*args, **kwargs)
         
-        # Returns either the newly created instance of this class or if one previously existed, returns that instance instead
-        return cls.instance
+        # Returns this instance
+        return self.instance
 
-
-    def __init__(self):
+    
+    def __init__(self, debugMode = False, *args, **kwargs):
         """
         Method that creates/initializes any instance variables that this class may require
         """
         
         # Calls the default initialization method to ensure proper initialization behaviour is executed
-        super().__init__()
+        super().__init__(*args, **kwargs)
         
-        # Set window flags for the overlay to hide it from the taskbar
+        # Creates an attribute to store the current instance of this class for the singleton implementation
+        self.instance = None
+        
+        # Sets window flags for the overlay to hide it from the taskbar
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
-        # Set attribute for a translucent background
+        # Sets attribute for a translucent background
         self.setAttribute(Qt.WA_TranslucentBackground)
         
-        # Stores the first instance of luna found in the active windows
-        self.luna = self.fetchLuna()
+        # Stores the current or first found active instance of luna into the luna attribute 
+        self.luna = self.checkLuna()
         
+        # Creates an attribute that allows the user to toggle debug messages to the console on/off
+        self.debugMode = debugMode
         # Sets a default overlay/debug color to prevent the paintEvent trying to paint with an undefined color
         self.debugColor = self.overlayColor = QColor(Qt.white)
-        
-        # List to store each overlay that should be drawn to the screen when the paint event is called
-        self.overlayList = []
 
         
     def paintEvent(self, event):
@@ -98,24 +109,30 @@ class OverlayManager(QWidget):
         except Exception as e:
             
             # Informs user that an error has occured
-            self.addDebug(f'Error painting overlays! Please see console output for more information...')
+            self.debug(f'Error painting overlays! Please see console output for more information...')
             # Prints an informative error message to the console
             self.logError(f'Error painting overlays: {e}')
     
-    
+
     def checkLuna(self):
         """
         Method that checks if Luna.exe is the current active application, if not, calls another method to handle its activation.
         """
         
+        # Writes debug info to console
+        self.debug('Checking for any open instances of \"Luna\" client...', False)
         # Checks if the active window contains the string "Luna"
         if apps.getActiveWindow() in apps.getWindowsWithTitle('Luna'):
-            # If luna is already the current active window, returns early
-            return
+            # Writes debug info to console
+            self.debug('Found active instance of "Luna" already open, switching over now...', False)
+            # If luna is already the current active window, returns the active window instead of searching for luna
+            return apps.getActiveWindow()
         # Else, if luna is not the current active window
         else:
-            # Calls the method that activates the game client
-            self.fetchLuna()
+            # Writes debug info to console
+            self.debug('Failed to find active instance of \"Luna\", attempting to fetch a client from active windows...', False)
+            # Fetches the first instance of luna from the active windows and returns it
+            return self.fetchLuna()
 
 
     def fetchLuna(self):
@@ -125,8 +142,6 @@ class OverlayManager(QWidget):
         """
         
         try:
-            # Writes debug info to the screen informing user that an overlay is being cleared
-            self.addDebug(f'Fetching \"Luna\" client - please wait...', True)
             # Fetches all active instances of the Luna game client and stores them in a list
             lunaList = apps.getWindowsWithTitle("Luna")
         
@@ -146,7 +161,7 @@ class OverlayManager(QWidget):
                 self.show()
                 
                 # Writes debug info to the screen informing user that an overlay is being cleared
-                self.addDebug(f'Successfully retrieved \"Luna\" client!', True)
+                self.debug(f'Successfully retrieved \"Luna\" client!')
                 
                 # Returns the active luna application
                 return self.luna
@@ -199,13 +214,14 @@ class OverlayManager(QWidget):
             self.logError(f'Error drawing debug message: {e}')
 
 
-    def addDebug(self, debugMsg, consolePrint = False, delay = 3000):
+    def debug(self, debugMsg, drawDebug = True, delay = 1500):
         """
         Paints debug info to the screen to inform the user of the action currently being undertaken by the bot
         
          Parameters:
         - debugMsg (str): The debug message to be displayed at the top of the game client to inform the user of the current process being performed
-        - delay (optional int): The time in milliseconds before the overlay is automatically removed (default = 3000, None = Permanent)
+        - drawDebug (optional bool): False if this debug message should not be drawn to the screen, else true (default = True)
+        - delay (optional int): The time in milliseconds before the overlay is automatically removed (default = 1500, None = Permanent)
         """
         
         try:
@@ -215,18 +231,21 @@ class OverlayManager(QWidget):
                 print('Error adding debug message: Attempted to paint an empty debug message to the screen!')
                 return
             
+            # If this debug message should be painted to the screen
+            if drawDebug:
+            
+                # Adds the passed debug message to the message list to queue it
+                self.debugMsgList.append(debugMsg)
+                # Sets debugCleared bool to False since we just added a debug message to the queue
+                self.debugCleared = False
+            
+                # Starts at timer to remove this debug message after the passed amount of time
+                QTimer.singleShot(delay, self.clearDebug)
+                
             # If this debug message should be drawn to the console too
-            if consolePrint:
+            if self.debugMode:
                 # Writes debug message to the console
                 print(debugMsg)
-
-            # Adds the passed debug message to the message list to queue it
-            self.debugMsgList.append(debugMsg)
-            # Sets debugCleared bool to False since we just added a debug message to the queue
-            self.debugCleared = False
-            
-            # Starts at timer to remove this debug message after the passed amount of time
-            QTimer.singleShot(delay, self.clearDebug)
             
         # Catches any errors gracefully
         except Exception as e:
@@ -291,7 +310,7 @@ class OverlayManager(QWidget):
                     # Draws this grid to the screen
                     painter.drawRect(grid)
                     # Writes debug info to the screen informing user that an overlay is currently being cleared
-                    self.addDebug(f'Added overlay at x: {grid.x()}, y: {grid.y()}', True)
+                    self.debug(f'Added overlay at x: {grid.x()}, y: {grid.y()}')
                     
             # Sets overlays cleared bool to false since we just added some
             self.overlaysCleared = not self.overlayList
@@ -300,7 +319,7 @@ class OverlayManager(QWidget):
         except Exception as e:
             
             # Informs user that an error has occured
-            self.addDebug(f'Error drawing overlay! Please see console output for more information...')
+            self.debug(f'Error drawing overlay! Please see console output for more information...')
             # Prints an informative error message to the console
             self.logError(f'Error drawing overlay: {e}')  
         
@@ -360,7 +379,7 @@ class OverlayManager(QWidget):
         except Exception as e:
             
             # Informs user that an error has occured
-            self.addDebug('Error adding overlay! Please see console output for more information...')
+            self.debug('Error adding overlay! Please see console output for more information...')
             # Prints an informative error message to the console
             self.logError(f'Error adding overlay: {e}')
 
@@ -401,7 +420,7 @@ class OverlayManager(QWidget):
         except Exception as e:
             
             # Informs user that an error has occured
-            self.addDebug('Error adding overlay! Please see console output for more information...')
+            self.debug('Error adding overlay! Please see console output for more information...')
             # Prints an informative error message to the console
             self.logError(f'Error adding overlay: {e}')
             
@@ -433,17 +452,17 @@ class OverlayManager(QWidget):
         """
         
         # Writes debug info to console
-        print(f'Debug cleared = {self.debugCleared}, Overlay cleared = {self.overlaysCleared}')
+        self.debug(f'Debug cleared = {self.debugCleared}, Overlay cleared = {self.overlaysCleared}', False)
         # Ensures debug message and all overlays have been cleared before exiting
         if self.debugCleared and self.overlaysCleared:
             
             # Writes close message to console
-            print('Overlay Manager tasks complete! Exiting overlay manager...')
+            self.debug('Overlay Manager tasks complete! Exiting overlay manager...', False)
             # Resets overlay booleans to prevent them being true the next time this instance is used
             self.debugCleared = self.overlaysCleared = False
             # Exits the event loop, closing this widget
             QApplication.quit()
-
+            
 
     def logError(self, errorMsg):
         """
@@ -459,7 +478,7 @@ class OverlayManager(QWidget):
         QApplication.exit()
         # System exits with a non-zero exit code to show that an error or exception has occured
         sys.exit(1)
-
+        
 
 def test():
     """
@@ -477,7 +496,7 @@ def test():
         test = OverlayManager()
         print(f'Started debug timer @ {datetime.datetime.now()}')
         # Tests the debug feature which should draw the passed text on top of the game client
-        test.addDebug(debugMsg = 'Initializing script... Please Wait...', delay = 4200)
+        test.debug(debugMsg = 'Initializing script... Please Wait...', delay = 4200)
         print(f'Started overlay timer @ {datetime.datetime.now()}')
         # Tests the overlay feature which should draw a rectangle to show the user what the bot is has found
         test.addOverlay(overlayX = 0, overlayY = 0, overlayWidth = 50, overlayHeight = 50, overlayRows = 2, overlayColumns = 2, overlayDelay = 2500)
