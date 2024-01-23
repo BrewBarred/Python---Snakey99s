@@ -64,19 +64,18 @@ class OverlayManager(QWidget):
         
         # Creates an attribute to store the current instance of this class for the singleton implementation
         self.instance = None
-        
         # Sets window flags for the overlay to hide it from the taskbar
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         # Sets attribute for a translucent background
         self.setAttribute(Qt.WA_TranslucentBackground)
         
-        # Stores the current or first found active instance of luna into the luna attribute 
-        self.luna = self.checkLuna()
-        
         # Creates an attribute that allows the user to toggle debug messages to the console on/off
         self.debugMode = debugMode
         # Sets a default overlay/debug color to prevent the paintEvent trying to paint with an undefined color
         self.debugColor = self.overlayColor = QColor(Qt.white)
+        
+        # Stores the current or first found active instance of luna into the luna attribute 
+        self.luna = self.checkLuna()
 
         
     def paintEvent(self, event):
@@ -119,20 +118,31 @@ class OverlayManager(QWidget):
         Method that checks if Luna.exe is the current active application, if not, calls another method to handle its activation.
         """
         
+        # Returns early if the luna attribute is already the active window
+        if apps.getActiveWindow() is self.luna:
+            return
+        
+        # Stores the active luna client or none if none exit
+        luna = apps.getActiveWindow if apps.getActiveWindow.__name__.startswith('Luna - ') else None
+
         # Writes debug info to console
         self.debug('Checking for any open instances of \"Luna\" client...', False)
         # Checks if the active window contains the string "Luna"
-        if apps.getActiveWindow() in apps.getWindowsWithTitle('Luna'):
+        if luna is not None:
+            
             # Writes debug info to console
-            self.debug('Found active instance of "Luna" already open, switching over now...', False)
-            # If luna is already the current active window, returns the active window instead of searching for luna
-            return apps.getActiveWindow()
+            self.debug('Bypassing fetchLuna method, active client was detected...', False)
+            # Returns the first instance of luna found in the current active windows
+            return luna
+        
         # Else, if luna is not the current active window
         else:
+            
             # Writes debug info to console
             self.debug('Failed to find active instance of \"Luna\", attempting to fetch a client from active windows...', False)
             # Fetches the first instance of luna from the active windows and returns it
             return self.fetchLuna()
+        
 
 
     def fetchLuna(self):
@@ -230,6 +240,11 @@ class OverlayManager(QWidget):
                 # Writes informative error to console then returns early
                 print('Error adding debug message: Attempted to paint an empty debug message to the screen!')
                 return
+                
+            # If this debug message should be drawn to the console too
+            if self.debugMode:
+                # Writes debug message to the console
+                print(debugMsg)
             
             # If this debug message should be painted to the screen
             if drawDebug:
@@ -241,11 +256,6 @@ class OverlayManager(QWidget):
             
                 # Starts at timer to remove this debug message after the passed amount of time
                 QTimer.singleShot(delay, self.clearDebug)
-                
-            # If this debug message should be drawn to the console too
-            if self.debugMode:
-                # Writes debug message to the console
-                print(debugMsg)
             
         # Catches any errors gracefully
         except Exception as e:
@@ -461,7 +471,7 @@ class OverlayManager(QWidget):
             # Resets overlay booleans to prevent them being true the next time this instance is used
             self.debugCleared = self.overlaysCleared = False
             # Exits the event loop, closing this widget
-            QApplication.quit() 
+            QApplication.quit()
             
 
     def logError(self, errorMsg):
@@ -493,7 +503,7 @@ def test():
         Overlay.setWindowIcon(QIcon())
         
         # Instantiates this class with a test instance
-        test = OverlayManager()
+        test = OverlayManager(debugMode = True)
         print(f'Started debug timer @ {datetime.datetime.now()}')
         # Tests the debug feature which should draw the passed text on top of the game client
         test.debug(debugMsg = 'Initializing script... Please Wait...', delay = 4200)

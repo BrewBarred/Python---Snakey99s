@@ -32,6 +32,7 @@
     <Compile Include="Snakey99s.py" />
     <Compile Include="splitInv.py" />
     <Compile Include="timerTest.py" />
+    <Compile Include="WindowManager.py" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />
