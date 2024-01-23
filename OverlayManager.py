@@ -461,7 +461,7 @@ class OverlayManager(QWidget):
             # Resets overlay booleans to prevent them being true the next time this instance is used
             self.debugCleared = self.overlaysCleared = False
             # Exits the event loop, closing this widget
-            QApplication.quit()
+            QApplication.quit() 
             
 
     def logError(self, errorMsg):
