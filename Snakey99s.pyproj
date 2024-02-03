@@ -24,6 +24,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="col.py" />
+    <Compile Include="Debugger.py" />
     <Compile Include="Main.py" />
     <Compile Include="singletonExample.py" />
     <Compile Include="objectRotated.py" />
