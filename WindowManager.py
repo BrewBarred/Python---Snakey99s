@@ -1,7 +1,5 @@
 # Imports the pygetwindow class to check and manipulate the os's active windows
 import pygetwindow as apps
-# Imports win32gui to handle the activation/maximization of the fetched luna client
-import win32gui as appControls
 
 class WindowManager():
     """

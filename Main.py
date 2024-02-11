@@ -23,7 +23,8 @@ time.sleep(1)
 pyautogui.typewrite("Hi, Eli!")
 
 # Construct the relative path to the "screens" folder
-imagePath = os.path.normpath(os.path.join(os.getcwd(), '..', 'screens'))
+imagePath = os.path.normpath(os.path.join(os.getcwd(), 'screens'))
+print(imagePath)
 
 # Load the image
 template_path = os.path.join(imagePath, 'test3.png')

@@ -1,14 +1,18 @@
-# TEMP imports datetime class to check timers are operating correctly
-import datetime
-# Imports QtWidgets classes which I believe to be necessary for the QtGui library to draw graphics (but not 100% sure on this one)
+# Imports QtWidget/QApplication classes which are required to execute this classes event-loop
 from PyQt5.QtWidgets import QApplication, QWidget
 # Imports QtGui classes that handle drawing overlays and text to the screen
-from PyQt5.QtGui import QFont, QFontMetricsF, QPainter, QBrush, QColor, QIcon
+from PyQt5.QtGui import QFont, QFontMetricsF, QPainter, QColor
 # Imports QtCore classes that handle the creation of shapes and timers
 from PyQt5.QtCore import QRect, QRectF, Qt, QTimer
 # Imports the deepcopy class from the copy library to make deepcopies of our lists
 from copy import deepcopy as deepcopy
 
+
+
+"""       --------------------       """
+##!         Overlay Manager Class:        
+"""       --------------------       """    
+    
 
 class OverlayManager(QWidget):
     """
@@ -16,50 +20,22 @@ class OverlayManager(QWidget):
     and to inform the user of the current action that the bot is performing
     """
     
-    # Stores the first instance of luna found in the active windows
-    lunaClient = None
-    # Creates a debug list which queues any debug messages needing to be displayed
-    debugMsgList = []
-    # Stores the timer that is used to remove debug messages after a set amount of time
-    debugTimer = QTimer()
-    # Returns true if there is no self debugMsg currently being displayed
-    debugCleared = False
-    # Creates an overlay list which queues any debug messages needing to be displayed
-    overlayList = []
-    # Returns true if there are no overlays being displayed
-    overlaysCleared = False
-    # Stores the overlay that is used to remove debug messages after a set amount of time
-    overlayTimer = QTimer()
-    
-    """
-    def __call__(self, *args, **kwargs):
-        Method that overrides the default calling method (which is executed whenever this class is called) to ensure that
-        only 1 instance of this class can exist at all times. This is achieved by using a simple singleton implementation
-        
-        # TEMP Writes debug info to console
-        print(f'New instance has been called! Current instance: {self.instance}')
-        
-        # Checks if the class instance variable has an instance stored in it
-        if self.instance is None:
-            # Creates a new instance of this class and stores it in the instance attribute
-            self.instance = super().__call__(*args, **kwargs)
-        
-        # Returns this instance
-        return self.instance
-        """
-    
-    
+
     def __init__(self, lunaClient, *args, **kwargs):
         """
         Method that creates/initializes any instance variables that this class may require
         """
+        
         try:
-            # TEMP
+            
+            # Writes initialization info to console
             print(f'Initializing overlay manager...')
             # Calls the default initialization method to ensure proper initialization behaviour is executed
             super().__init__(*args, **kwargs)
             
-            # Sets attribute for lunaClient using the passed client
+            # Initializes the transparent canvas which will be used for drawing
+             
+            # Sets instance attribute that stores the passed lunaClient which is where the overlays and debug messages will be drawn to
             self.lunaClient = lunaClient
             # Sets the size of the transparent canvas to draw on
             self.setGeometry(lunaClient.left, lunaClient.top, lunaClient.width, lunaClient.height)
@@ -69,10 +45,28 @@ class OverlayManager(QWidget):
             self.setAttribute(Qt.WA_TranslucentBackground)
             # Ensures the canvas is visible
             self.show()
+            
+            # Initializes other necessary instance attributes
+            
+            # Creates a debug list which queues any debug messages needing to be displayed
+            self.debugMsgList = []
+            # Stores the timer that is used to remove debug messages after a set amount of time
+            self.debugTimer = QTimer()    
+            # Returns true if there is no self debugMsg currently being displayed
+            self.debugCleared = False
+            # Creates an overlay list which queues any debug messages needing to be displayed
+            self.overlayList = []
+            # Returns true if there are no overlays being displayed
+            self.overlaysCleared = False
+            # Stores the overlay that is used to remove debug messages after a set amount of time
+            self.overlayTimer = QTimer()
             # Sets a default overlay/debug color to prevent the paintEvent trying to paint with an undefined color
             self.debugColor = self.overlayColor = QColor(Qt.white)
-            
+        
+        # Catches any errors gracefully
         except Exception as e:
+            
+            # Writes error info to console if an exception is thrown during initialization
             print(f'Init exception raised: {e}')
 
         
@@ -82,7 +76,7 @@ class OverlayManager(QWidget):
         """
         
         try:
-            print('Paint event called!')
+            
             # Calls the parent classes paintEvent to ensure the default painting behaviour is executed
             super().paintEvent(event)
                 
@@ -90,11 +84,16 @@ class OverlayManager(QWidget):
             painter = QPainter(self)
             # Enables antialiasing to smooth out any jagged or pixelated lines or edges
             painter.setRenderHint(QPainter.Antialiasing)
-        
-            # Draws the debug message to the screen (if one exists)
-            self.__drawDebugMsg(painter)
-            # Draws each overlay in the overlayList
-            self.__drawOverlays(painter)
+            
+            # If there is a debug message in the drawing queue
+            if self.debugMsgList is not None:
+                # Draws the debug message to the screen (if one exists)
+                self.__drawDebugMsg(painter)
+                
+            # If there is an overlay in the drawing queue
+            if self.overlayList is not None:
+                # Draws each overlay in the overlayList
+                self.__drawOverlays(painter)
         
         # Catches any errors gracefully
         except Exception as e:
@@ -110,6 +109,7 @@ class OverlayManager(QWidget):
         """
         
         try:
+            
             # Returns early if there is no debug message to paint (shouldn't be possible but doesn't hurt to check it anyway)
             if len(self.debugMsgList) > 0:
                 
@@ -133,6 +133,7 @@ class OverlayManager(QWidget):
                 
                 # Sets debug message bool to false since we just drew another debug message
                 self.debugCleared = not self.debugMsgList
+            
         
         # Catches any errors gracefully
         except Exception as e:
@@ -140,6 +141,7 @@ class OverlayManager(QWidget):
             # Prints an informative error message to the console
             return (f'Error drawing debug message: {e}')
             
+    
     def addDebug(self, debugMsg, delay = 1500):
         """
         Paints debug info to the screen to inform the user of the action currently being undertaken by the bot
@@ -151,13 +153,18 @@ class OverlayManager(QWidget):
         
         try:
             
+            # Returns early if there is no debug messages to display
+            if debugMsg is None and self.debugMsgList is None:
+                return
+            
             # Adds the passed debug message to the message list to queue it
             self.debugMsgList.append(debugMsg)
             # Sets debugCleared bool to False since we just added a debug message to the queue
             self.debugCleared = False
-            # Starts at timer to remove this debug message after the passed amount of time
-            self.debugTimer.singleShot(delay, self.clearDebug)
             
+            # Creates a timer to remove this debug message after the passed amount of time (ms)
+            self.debugTimer.singleShot(delay, self.clearDebug)
+
         # Catches any errors gracefully
         except Exception as e:
             
@@ -172,9 +179,10 @@ class OverlayManager(QWidget):
         
         # Checks if the debug message list has any messages in the queue
         if self.debugMsgList: 
+            
             # Sets the message at the start of the queue to an empty string
             self.debugMsgList[0] = None
-            # Repaints this control to remove the current debug message from the screen
+            # Repaints this control to remove the current debug message from the screen before deleting it otherwise it will stay there permanently
             self.update()
             # Pops the first element of the debugMsgList
             self.debugMsgList.pop(0)
@@ -183,23 +191,31 @@ class OverlayManager(QWidget):
         self.debugCleared = not self.debugMsgList
         # Attempts to exit this instance
         self.tryClose()
-            
+        
 
-    def setDebugColor(self, newColor):
+    def setDebugColor(self, newColor = 'white'):
         """
-        Method that changes the color of the debug messages
+        Method that changes the color of the debug overlays
         
          Parameters:
-        - newColor (QColor): The desired debug message color (default = QColor(Qt.white))
+        - color (QColor): The desired debug overlay color (default = 'white')
         """
         
+        # Attempts to convert the passed color string into a QColor
+        convertedColor = QColor(newColor)
+        
         # Ensures the passed color is of type QColor before proceeding
-        if isinstance(newColor, QColor):
+        if convertedColor.isValid():
             
-            # Sets the debug message paint brush to the passed color
-            self.debugColor = QColor(newColor)
+            # Sets the debug overlay paint brush to the passed color
+            self.debugColor = convertedColor
             # Calls repaint method to instantly repaint this control
-            self.Repaint() 
+            self.repaint()
+         
+        # Else if passed color is not of the correct type
+        else:
+            # Returns an error message
+            return (f'Failed to set debug overlay color - Invalid QColor of \"{newColor}" was passed!')       
         
     
     def __drawOverlays(self, painter):
@@ -209,6 +225,7 @@ class OverlayManager(QWidget):
         """
         
         try:
+            
             # Sets the outline color of the overlay grid to match the default color unless another color has been passed
             painter.setPen(self.overlayColor)
             
@@ -220,7 +237,7 @@ class OverlayManager(QWidget):
                     # Draws this grid to the screen
                     painter.drawRect(grid)
                     # Writes debug info to the screen informing user that an overlay is currently being cleared
-                    self.addDebug(f'Added overlay at x: {grid.x()}, y: {grid.y()}')
+                    self.addDebug(f'Added overlay at x: {grid.x()}, y: {grid.y()}', delay = 1000)
                     
             # Sets overlays cleared bool to false since we just added some
             self.overlaysCleared = not self.overlayList
@@ -231,8 +248,8 @@ class OverlayManager(QWidget):
             # Prints an informative error message to the console
             return (f'Error drawing overlay: {e}')
         
-        
-    def addOverlay(self, overlayX, overlayY, overlayWidth, overlayHeight, overlayRows = 1, overlayColumns = 1, overlayThickness = 2, overlayDelay = 3000):
+
+    def addOverlay(self, overlayX = 0, overlayY = 0, overlayWidth = 200, overlayHeight = 200, overlayRows = 1, overlayColumns = 1, overlayThickness = 2, overlayDelay = 3000):
         """
         Adds a new overlay on top of the game client at the specified location and size for a specified amount of time
         
@@ -248,6 +265,7 @@ class OverlayManager(QWidget):
         """
         
         try:
+            
             # Creates a rectangle which represents the outer boundries of this grid using the passed parameters
             overlayBox = QRect(overlayX, overlayY, overlayWidth, overlayHeight)
         
@@ -302,14 +320,17 @@ class OverlayManager(QWidget):
         """
         
         try:
+            
             # If the overlay list is empty
             if self.overlaysCleared is False:
-                # Iterates through the gridRemoval list 
-                while True:
-                    # Check if grid removal list is not empty
+                # Iterates through the passed list of overlay grids and removes them one-by-one
+                for grid in gridRemovalList:
+                    # Ensure the passed grid removal list is not empty to prevent index errors
                     if gridRemovalList:
-                        # Removes the last element of the gridRemovalList and stores it in the grid variable
-                        self.overlayList.remove(gridRemovalList.pop())
+                        # Writes debug info to the screen informing user that an overlay is currently being cleared
+                        self.addDebug(f'Removed overlay at x: {grid.x()}, y: {grid.y()}', delay = 1000)
+                        # Removes the last element of the grid removal list
+                        self.overlayList.remove(grid)
             
                     # Else if gridRemovalList is empty
                     else:
@@ -317,7 +338,7 @@ class OverlayManager(QWidget):
                         break
                
             # Updates the canvas which will draw all of the overlays contained within the list
-            self.update()
+            self.repaint()
             # Returns true if there are no overlays left to display
             self.overlaysCleared = not self.overlayList
             # Attempts to exit this instance
@@ -330,28 +351,29 @@ class OverlayManager(QWidget):
             self.addDebug('Error adding overlay! Please see console output for more information...')
             # Prints an informative error message to the console
             return (f'Error adding overlay: {e}')
-            
-
-    def setOverlayColor(self, newColor):
+    
+    
+    def setOverlayColor(self, newColor = 'white'):
         """
         Method that changes the color of the overlays
         
          Parameters:
-        - color (QColor): The desired overlay color (default = QColor(Qt.white))
+        - color (QColor): The desired overlay color (default = 'white')
         """
         
+        # Attempts to convert the passed color string into a QColor
+        convertedColor = QColor(newColor)
+        
         # Ensures the passed color is of type QColor before proceeding
-        if isinstance(newColor, QColor):
+        if convertedColor.isValid():
             # Sets the overlay paint brush to the passed color
-            self.debugColor = newColor
-            # Calls repaint method to instantly repaint this control
-            self.Repaint()
-         
+            self.overlayColor = convertedColor
+        
         # Else if passed color is not of the correct type
         else:
-            # Throws error
-            return ('Error: invalid color type passed')
-        
+            # Returns an error message
+            return (f'Failed to set overlay color - Invalid QColor of \"{newColor}" was passed!')
+    
     
     def tryClose(self):
         """

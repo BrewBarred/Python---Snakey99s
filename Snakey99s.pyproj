@@ -13,6 +13,7 @@
     <RootNamespace>Snakey99s</RootNamespace>
     <IsWindowsApplication>False</IsWindowsApplication>
     <InterpreterId>Global|PythonCore|3.12</InterpreterId>
+    <SuppressConfigureTestFrameworkPrompt>true</SuppressConfigureTestFrameworkPrompt>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -25,14 +26,16 @@
   <ItemGroup>
     <Compile Include="col.py" />
     <Compile Include="Debugger.py" />
+    <Compile Include="MouseManager.py" />
+    <Compile Include="Point.py" />
+    <Compile Include="SearchManager.py" />
     <Compile Include="Main.py" />
-    <Compile Include="singletonExample.py" />
     <Compile Include="objectRotated.py" />
     <Compile Include="OverlayManager.py" />
-    <Compile Include="scriptManager.py" />
+    <Compile Include="ScriptManager.py" />
     <Compile Include="Snakey99s.py" />
-    <Compile Include="splitInv.py" />
-    <Compile Include="timerTest.py" />
+    <Compile Include="te.py" />
+    <Compile Include="wait.py" />
     <Compile Include="WindowManager.py" />
   </ItemGroup>
   <ItemGroup>
